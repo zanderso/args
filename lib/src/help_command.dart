@@ -8,6 +8,14 @@ import '../command_runner.dart';
 ///
 /// This command displays help information for the various subcommands.
 class HelpCommand<T> extends Command<T> {
+  HelpCommand() {
+    argParser.addFlag('all',
+        abbr: 'a',
+        defaultsTo: false,
+        negatable: false,
+        help: 'Prints help for every command and sub-command');
+  }
+
   @override
   final name = "help";
 
@@ -20,6 +28,11 @@ class HelpCommand<T> extends Command<T> {
 
   @override
   T run() {
+    if (argResults['all']) {
+      _printAllUsage();
+      return null;
+    }
+
     // Show the default help if no command was specified.
     if (argResults.rest.isEmpty) {
       runner.printUsage();
@@ -54,5 +67,26 @@ class HelpCommand<T> extends Command<T> {
 
     command.printUsage();
     return null;
+  }
+
+  void _printAllUsage() {
+    final Iterable<MapEntry<String, Command>> topLevelCommands =
+        runner.commands?.entries;
+    if (topLevelCommands == null) {
+      runner.printUsage();
+      return;
+    }
+    final List<MapEntry<String, Command>> commandStack =
+        new List<MapEntry<String, Command>>.from(topLevelCommands);
+    runner.printUsage();
+    while (commandStack.isNotEmpty) {
+      final MapEntry<String, Command> command = commandStack.removeAt(0);
+      if (command.value.subcommands != null) {
+        commandStack.insertAll(0, command.value.subcommands.entries);
+      }
+      // TODO(zra): wrapText?
+      print('\nCommand: ${command.key}');
+      command.value.printUsage();
+    }
   }
 }
